@@ -83,14 +83,20 @@ if (options.list)
 
 async function executeSql(queryInterface, sql) {
   return queryInterface.sequelize.query(
-    sql, {
-    type: queryInterface.sequelize.QueryTypes.SELECT
-  });
+    sql, 
+    );
 }
 
 (async () => {
-  let res = await executeSql(queryInterface, 'select * from SequelizeMeta');
-  let ranMigrations = res.map(r => r.name);
+  await executeSql(queryInterface, "create table if not exists sequelize_migrations (name VARCHAR(255) PRIMARY KEY)");
+
+  let res = await executeSql(queryInterface, 'select * from sequelize_migrations');
+  
+  let ranMigrations = res.map(r => {
+    if(!r[0])
+      return null;
+    return r[0].name;
+  });
   migrationFiles = migrationFiles.filter(mf => {
     return (!ranMigrations.includes(mf));
   })
@@ -100,7 +106,7 @@ async function executeSql(queryInterface, sql) {
 
   for (let file of migrationFiles) {
     await migrate.executeMigration(queryInterface, path.join(migrationsDir, file), fromPos);
-    await executeSql(queryInterface, `INSERT INTO SequelizeMeta (name) VALUES ('${file}')`);
+    await executeSql(queryInterface, `INSERT INTO sequelize_migrations (name) VALUES ('${file}')`);
     fromPos = 0;
   }
 
